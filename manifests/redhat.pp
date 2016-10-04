@@ -13,9 +13,11 @@
 #
 # Sample Usage:
 #
+#
 class datadog_agent::redhat(
   $baseurl = "https://yum.datadoghq.com/rpm/${::architecture}/",
   $gpgkey = 'https://yum.datadoghq.com/DATADOG_RPM_KEY.public.E09422B3',
+  $gpgkeysum = '694a2ffecff85326cc08e5f1a619937999a5913171e42f166e13ec802c812085',
   $manage_repo = true,
   $agent_version = 'latest'
 ) {
@@ -26,11 +28,13 @@ class datadog_agent::redhat(
 
     validate_string($baseurl)
 
-    file { "DATADOG_RPM_KEY.public":
+    remote_file { "DATADOG_RPM_KEY.public":
         owner  => root,
         group  => root,
         mode   => '600',
         path   => $public_key_local,
+        checksum => $gpgkeysum,
+        checksum_type => 'sha256',
         source => $gpgkey
     }
 
@@ -38,7 +42,7 @@ class datadog_agent::redhat(
         command     => "/bin/rpm --import $public_key_local",
         onlyif      => "/bin/gpg --quiet --with-fingerprint -n $public_key_local | grep \'A4C0 B90D 7443 CF6E 4E8A  A341 F106 8E14 E094 22B3\'",
         unless      => "/bin/rpm -q gpg-pubkey-e09422b3",
-        require     => File['DATADOG_RPM_KEY.public'],
+        require     => Remote_file['DATADOG_RPM_KEY.public'],
         notify      => Exec['cleanup-gpg-key'],
     }
 
